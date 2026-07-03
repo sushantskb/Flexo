@@ -2,8 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --primary: #E50914;
+  --primary-rgb: 229, 9, 20;
+  --secondary: #8A2BE2;
+  --secondary-rgb: 138, 43, 226;
+  --tertiary: #0072D7;
+  --tertiary-rgb: 0, 114, 215;
+  --neutral: #050505;
+  --neutral-rgb: 5, 5, 5;
+}
+
 body {
-  @apply bg-zinc-900 h-full overflow-x-hidden;
+  background-color: var(--neutral);
+  @apply h-full overflow-x-hidden;
 }
 
 #__next {
@@ -15,14 +27,14 @@ html {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   PLYR LAYOUT — Netflix Red Theme Overrides
+   PLYR LAYOUT — Theme Overrides
    ═══════════════════════════════════════════════════════════════════════════ */
 :root,
 media-player {
-  --plyr-color-main: #e50914 !important;
-  --plyr-video-control-color-hover: #e50914 !important;
-  --plyr-video-control-background-hover: rgba(229, 9, 20, 0.15) !important;
-  --plyr-focus-visible-color: #e50914 !important;
+  --plyr-color-main: var(--primary) !important;
+  --plyr-video-control-color-hover: var(--primary) !important;
+  --plyr-video-control-background-hover: rgba(var(--primary-rgb), 0.15) !important;
+  --plyr-focus-visible-color: var(--primary) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
