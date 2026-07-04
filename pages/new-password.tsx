@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Eye, EyeOff, HelpCircle, CheckCircle2, Circle } from "lucide-react";
 import { useRouter } from "next/router";
+import axios from "axios";
 
 /* ─── Password strength requirement checks ─── */
 const requirements = [
@@ -36,14 +37,31 @@ export default function NewPassword() {
       setError("Passwords do not match.");
       return;
     }
+
+    const email = sessionStorage.getItem("reset_email");
+    const resetToken = sessionStorage.getItem("reset_token");
+
+    if (!email || !resetToken) {
+      setError("Reset session expired. Please start the password reset flow again.");
+      return;
+    }
+
     setError("");
     setLoading(true);
     try {
-      // Simulate API call — replace with actual reset-token API call
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      await axios.post("/api/auth/reset-password", {
+        email,
+        resetToken,
+        newPassword: password,
+      });
+
+      // Clear reset session cache
+      sessionStorage.removeItem("reset_email");
+      sessionStorage.removeItem("reset_token");
+
       router.push("/auth");
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "Failed to reset password. Please try again.");
     } finally {
       setLoading(false);
     }

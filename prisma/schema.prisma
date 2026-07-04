@@ -21,6 +21,11 @@ model User {
   favouriteIds   String[]   @db.ObjectId
   profiles       Profiles[]
   role           String     @default("user")
+
+  // Password reset OTP fields
+  resetOtp       String?    // bcrypt-hashed 6-digit OTP
+  resetOtpExpiry DateTime?  // OTP expiration timestamp
+  resetToken     String?    // short-lived token used to authorise /new-password
 }
 
 model Account {

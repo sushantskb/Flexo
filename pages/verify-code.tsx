@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { HelpCircle } from "lucide-react";
+import axios from "axios";
 
 const CODE_LENGTH = 6;
 
@@ -65,15 +66,25 @@ export default function VerifyCode() {
       setError("Please enter the full 6-digit code.");
       return;
     }
+    const email = sessionStorage.getItem("reset_email");
+    if (!email) {
+      setError("Session expired. Please request a new code.");
+      return;
+    }
+
     setLoading(true);
     setError("");
     try {
-      // Simulate OTP verification — replace with real API call
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-      // On success, go to new-password
+      const response = await axios.post("/api/auth/verify-otp", {
+        email,
+        otp: code,
+      });
+
+      const { resetToken } = response.data;
+      sessionStorage.setItem("reset_token", resetToken);
       router.push("/new-password");
-    } catch {
-      setError("Invalid or expired code. Please try again.");
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "Invalid or expired code. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -81,13 +92,25 @@ export default function VerifyCode() {
 
   const handleResend = async () => {
     if (resendDisabled) return;
+    const email = sessionStorage.getItem("reset_email");
+    if (!email) {
+      setError("Session expired. Please request a new code.");
+      return;
+    }
+
     setResendDisabled(true);
     setResendCountdown(30);
     setDigits(Array(CODE_LENGTH).fill(""));
     setError("");
     inputRefs.current[0]?.focus();
-    // Simulate resend API call
-    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    try {
+      await axios.post("/api/auth/forgot-password", { email });
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "Failed to resend code. Please try again.");
+      setResendDisabled(false);
+      setResendCountdown(0);
+    }
   };
 
   const isFilled = digits.every((d) => d !== "");

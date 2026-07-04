@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Mail, ArrowLeft, HelpCircle } from "lucide-react";
 import { useRouter } from "next/router";
+import axios from "axios";
 
 export default function ForgotPassword() {
   const router = useRouter();
@@ -19,12 +20,12 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      // Simulate API call for reset link — replace with real email API
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      // Navigate to verify-code page on success
+      await axios.post("/api/auth/forgot-password", { email: email.toLowerCase().trim() });
+      // Store email in sessionStorage so verify-code can reference it
+      sessionStorage.setItem("reset_email", email.toLowerCase().trim());
       router.push("/verify-code");
-    } catch (err) {
-      setError("An error occurred. Please try again.");
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "An error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -84,7 +85,7 @@ export default function ForgotPassword() {
               Forgot Your Password?
             </h2>
             <p className="text-auth-muted text-sm sm:text-base leading-relaxed px-2">
-              Enter your registered email address and we&apos;ll send you a secure password reset link.
+              Enter your registered email address and we&apos;ll send you a secure verification code.
             </p>
           </div>
 
@@ -119,7 +120,7 @@ export default function ForgotPassword() {
               disabled={loading}
               className="w-full bg-gradient-to-r from-auth-primary to-auth-secondary text-white font-extrabold text-sm py-4 rounded-xl shadow-lg shadow-auth-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-auth-primary/50 cursor-pointer disabled:opacity-50 disabled:pointer-events-none mt-2"
             >
-              {loading ? "Sending reset link..." : "Send Reset Link"}
+              {loading ? "Sending code..." : "Send Code"}
             </button>
           </form>
 
