@@ -1,29 +1,28 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { Mail, ArrowLeft, HelpCircle } from "lucide-react";
+import { useRouter } from "next/router";
 
 export default function ForgotPassword() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
       setError("Please enter your email address.");
-      setSuccess("");
       return;
     }
     setError("");
-    setSuccess("");
     setLoading(true);
 
     try {
-      // Simulate API call for reset link
+      // Simulate API call for reset link — replace with real email API
       await new Promise((resolve) => setTimeout(resolve, 1500));
-      setSuccess("We have sent a secure password reset link to your email.");
-      setEmail("");
+      // Navigate to verify-code page on success
+      router.push("/verify-code");
     } catch (err) {
       setError("An error occurred. Please try again.");
     } finally {
@@ -93,19 +92,6 @@ export default function ForgotPassword() {
           {error && (
             <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-sm font-semibold">
               {error}
-            </div>
-          )}
-          {success && (
-            <div className="flex flex-col gap-3">
-              <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-4 rounded-xl text-sm font-semibold">
-                {success}
-              </div>
-              <Link
-                href="/new-password"
-                className="w-full bg-gradient-to-r from-auth-primary to-auth-secondary text-white font-extrabold text-sm py-3.5 rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-auth-primary/20"
-              >
-                Set New Password →
-              </Link>
             </div>
           )}
 
