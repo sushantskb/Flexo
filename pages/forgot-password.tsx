@@ -96,8 +96,16 @@ export default function ForgotPassword() {
             </div>
           )}
           {success && (
-            <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-4 rounded-xl text-sm font-semibold">
-              {success}
+            <div className="flex flex-col gap-3">
+              <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-4 rounded-xl text-sm font-semibold">
+                {success}
+              </div>
+              <Link
+                href="/new-password"
+                className="w-full bg-gradient-to-r from-auth-primary to-auth-secondary text-white font-extrabold text-sm py-3.5 rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-auth-primary/20"
+              >
+                Set New Password →
+              </Link>
             </div>
           )}
 
