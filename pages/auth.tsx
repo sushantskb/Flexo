@@ -120,7 +120,7 @@ const Auth = () => {
       </div>
 
       {/* Centered Logo Header */}
-      <div className="relative z-10 mb-6 flex flex-col items-center text-center">
+      <div className="relative z-10 mb-6 flex flex-col items-center text-center anim-fade-in">
         <Link href="/" className="group focus:outline-none mb-4" id="auth-logo-link">
           <div className="relative h-12 w-36 overflow-hidden flex items-center justify-center">
             <img 
@@ -139,7 +139,7 @@ const Auth = () => {
       </div>
 
       {/* Auth Panel Card */}
-      <div className="relative z-10 w-full max-w-[500px] bg-auth-card/65 border border-white/5 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-10 shadow-2xl flex flex-col gap-6">
+      <div className="relative z-10 w-full max-w-[500px] bg-auth-card/65 border border-white/5 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-10 shadow-2xl flex flex-col gap-6 anim-fade-up anim-delay-100">
         
         {/* Error message block */}
         {error && (
@@ -211,9 +211,17 @@ const Auth = () => {
             </div>
           ) : (
             <div>
-              <label className="text-[10px] font-bold text-auth-muted uppercase tracking-widest mb-2 block">
-                Password
-              </label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-[10px] font-bold text-auth-muted uppercase tracking-widest block">
+                  Password
+                </label>
+                <Link 
+                  href="/forgot-password" 
+                  className="text-[10px] font-bold text-auth-primary hover:underline uppercase tracking-widest transition-colors"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
               <input 
                 type="password" 
                 value={password}
@@ -281,7 +289,7 @@ const Auth = () => {
       </div>
 
       {/* Switch Toggle */}
-      <p className="relative z-10 text-auth-muted text-sm text-center font-semibold mt-6 select-none">
+      <p className="relative z-10 text-auth-muted text-sm text-center font-semibold mt-6 select-none anim-fade-in anim-delay-300">
         {variant === "login" ? "First time using Flixo?" : "Already have an account?"}{" "}
         <span
           onClick={toggleVariant}
