@@ -16,6 +16,20 @@
   --warm-bg: #151313;
   --warm-text: #EED3C4;
   --warm-muted: #A8958B;
+
+  /* Auth screen design system colors */
+  --auth-primary: #FF4D8D;
+  --auth-primary-rgb: 255, 77, 141;
+  --auth-secondary: #C13DFF;
+  --auth-secondary-rgb: 193, 61, 255;
+  --auth-tertiary: #4F7BFF;
+  --auth-tertiary-rgb: 79, 123, 255;
+  --auth-neutral: #877276;
+  --auth-neutral-rgb: 135, 114, 118;
+  --auth-bg: #0D0A0B;
+  --auth-card: #1D1516;
+  --auth-text: #F7DBDE;
+  --auth-muted: #A28D90;
 }
 
 body {

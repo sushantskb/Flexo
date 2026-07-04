@@ -18,6 +18,16 @@ module.exports = {
         'warm-bg': 'var(--warm-bg)',
         'warm-text': 'var(--warm-text)',
         'warm-muted': 'var(--warm-muted)',
+        
+        // Auth Palette
+        'auth-primary': 'var(--auth-primary)',
+        'auth-secondary': 'var(--auth-secondary)',
+        'auth-tertiary': 'var(--auth-tertiary)',
+        'auth-neutral': 'var(--auth-neutral)',
+        'auth-bg': 'var(--auth-bg)',
+        'auth-card': 'var(--auth-card)',
+        'auth-text': 'var(--auth-text)',
+        'auth-muted': 'var(--auth-muted)',
       },
     },
   },
