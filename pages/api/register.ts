@@ -29,7 +29,7 @@ export default async function handler(
         name: username,
         email: email,
         hashedPassword: hashPassword,
-        image: "",
+        image: `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(username)}&backgroundColor=0f0a0d`,
         emailVerified: new Date(),
       },
     });

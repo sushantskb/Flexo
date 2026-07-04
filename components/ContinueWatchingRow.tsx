@@ -3,7 +3,7 @@
 import React from "react";
 import { useRouter } from "next/router";
 import { BsFillPlayFill, BsXCircleFill } from "react-icons/bs";
-import { FaClock } from "react-icons/fa";
+import { MdHistory } from "react-icons/md";
 import axios from "axios";
 
 interface WatchProgressItem {
@@ -25,15 +25,15 @@ interface ContinueWatchingRowProps {
   onRemove: () => void; // callback to refetch after removal
 }
 
-const formatTime = (seconds: number) => {
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  if (m >= 60) {
-    const h = Math.floor(m / 60);
-    const rem = m % 60;
-    return `${h}h ${rem}m left`;
+const formatRemaining = (seconds: number) => {
+  const totalMin = Math.floor(seconds / 60);
+  if (totalMin >= 60) {
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return m > 0 ? `${h}h ${m}m remaining` : `${h}h remaining`;
   }
-  return `${m}m ${s}s left`;
+  if (totalMin <= 0) return "Almost done";
+  return `${totalMin}m remaining`;
 };
 
 const ContinueWatchingRow: React.FC<ContinueWatchingRowProps> = ({ data, onRemove }) => {
@@ -60,79 +60,83 @@ const ContinueWatchingRow: React.FC<ContinueWatchingRowProps> = ({ data, onRemov
   const timeRemaining = (item: WatchProgressItem) => {
     const remaining = item.duration - item.currentTime;
     if (remaining <= 0 || !item.duration) return null;
-    return formatTime(remaining);
+    return formatRemaining(remaining);
   };
 
   return (
-    <div className="px-4 md:px-12 mt-8">
+    <div className="px-6 md:px-16 mt-10">
       {/* Section Header */}
-      <div className="flex items-center gap-3 mb-4">
-        <FaClock className="text-red-500" size={18} />
-        <h2 className="text-white text-lg md:text-2xl font-semibold">Continue Watching</h2>
-      </div>
+      <h2 className="text-white text-2xl md:text-3xl font-bold mb-5">
+        Continue Watching
+      </h2>
 
       {/* Horizontal Scroll Row */}
-      <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+      <div className="flex gap-5 overflow-x-auto scrollbar-hide pb-2">
         {data.map((item) => {
           const remaining = timeRemaining(item);
+          const meta = [item.episodeLabel, remaining].filter(Boolean).join(" • ");
           return (
             <div
               key={item.id}
               onClick={() => handlePlay(item)}
-              className="group relative flex-shrink-0 w-[200px] sm:w-[240px] cursor-pointer rounded-lg overflow-hidden bg-zinc-900 hover:scale-105 transition-transform duration-300"
+              className="group flex-shrink-0 w-[260px] sm:w-[300px] md:w-[340px] cursor-pointer"
             >
               {/* Thumbnail */}
-              <div className="relative w-full aspect-video bg-zinc-800">
+              <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-neutral-900 ring-1 ring-white/10 group-hover:ring-fuchsia-500/40 transition duration-300">
                 {item.thumbnailUrl ? (
                   <img
                     src={item.thumbnailUrl}
                     alt={item.title || ""}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover transition duration-500 group-hover:scale-105"
                   />
                 ) : (
-                  <div className="w-full h-full bg-zinc-700 flex items-center justify-center">
-                    <BsFillPlayFill size={40} className="text-zinc-500" />
+                  <div className="w-full h-full bg-neutral-800 flex items-center justify-center">
+                    <BsFillPlayFill size={44} className="text-neutral-600" />
                   </div>
                 )}
 
                 {/* Play overlay on hover */}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center shadow-lg">
-                    <BsFillPlayFill size={22} className="text-black ml-0.5" />
+                  <div className="w-14 h-14 bg-gradient-to-r from-fuchsia-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg shadow-fuchsia-500/40">
+                    <BsFillPlayFill size={26} className="text-white ml-0.5" />
                   </div>
                 </div>
 
                 {/* Remove (×) button */}
                 <button
                   onClick={(e) => handleRemove(e, item)}
-                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 text-white hover:text-red-400"
+                  className="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 text-white/90 hover:text-red-400"
                   title="Remove from Continue Watching"
                 >
-                  <BsXCircleFill size={20} />
+                  <BsXCircleFill size={22} />
                 </button>
 
                 {/* Progress bar */}
-                <div className="absolute bottom-0 left-0 w-full h-[4px] bg-zinc-600">
+                <div className="absolute bottom-0 left-0 w-full h-[5px] bg-black/40">
                   <div
-                    className="h-full bg-red-600 transition-all"
+                    className="h-full bg-gradient-to-r from-fuchsia-500 to-purple-500 shadow-[0_0_10px_rgba(217,70,239,0.7)] transition-all"
                     style={{ width: `${Math.min(100, item.percentage)}%` }}
                   />
                 </div>
               </div>
 
               {/* Info */}
-              <div className="p-3">
-                <p className="text-white text-sm font-semibold line-clamp-1">{item.title}</p>
-                {item.episodeLabel && (
-                  <p className="text-gray-400 text-xs mt-0.5 line-clamp-1">{item.episodeLabel}</p>
-                )}
-                {remaining && (
-                  <p className="text-zinc-500 text-xs mt-1">{remaining}</p>
+              <div className="mt-3 px-1">
+                <p className="text-white text-lg font-bold line-clamp-1">{item.title}</p>
+                {meta && (
+                  <p className="text-neutral-500 text-sm mt-1 line-clamp-1">{meta}</p>
                 )}
               </div>
             </div>
           );
         })}
+
+        {/* Trailing ghost / history card */}
+        <div className="flex-shrink-0 w-[260px] sm:w-[300px] md:w-[340px]">
+          <div className="w-full aspect-video rounded-2xl border border-white/10 bg-white/[0.02] flex items-center justify-center hover:bg-white/[0.05] transition">
+            <MdHistory size={40} className="text-neutral-600" />
+          </div>
+        </div>
       </div>
     </div>
   );

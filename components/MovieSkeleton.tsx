@@ -1,8 +1,7 @@
 const MovieSkeleton = () => {
   return (
-    <div className="relative h-[28vw] w-[20vw] min-w-[150px] md:h-[12vw] md:w-[18vw] animate-pulse rounded-md bg-zinc-800">
-      {/* Optional: Add a darker overlay or a subtle gradient to mimic the Netflix card depth */}
-      <div className="absolute inset-0 bg-gradient-to-t from-zinc-900/50 to-transparent"></div>
+    <div className="flex-shrink-0 w-[150px] sm:w-[170px] md:w-[190px] aspect-[2/3] animate-pulse rounded-2xl bg-neutral-800 ring-1 ring-white/5">
+      <div className="w-full h-full rounded-2xl bg-gradient-to-t from-neutral-900/60 to-transparent" />
     </div>
   );
 };

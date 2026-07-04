@@ -5,9 +5,11 @@ import { useRouter } from "next/router";
 import useModelInfo from "@/hooks/useModelInfo";
 import { BiChevronDown } from "react-icons/bi";
 import { useSelectionStore } from "@/zustand/useSelectStore";
+
 interface MovieCardProps {
   data: Record<string, any>;
 }
+
 const isNewlyAdded = (dateStr?: string) => {
   if (!dateStr) return false;
   return (Date.now() - new Date(dateStr).getTime()) / 86400000 <= 7;
@@ -17,59 +19,49 @@ const MovieCard: React.FC<MovieCardProps> = ({ data }) => {
   const router = useRouter();
   const { openModel } = useModelInfo();
   const { profile } = useSelectionStore();
+
   return (
-    <div className="group bg-zinc-900 col-span relative h-24 md:h-[12vw]">
+    <div className="group relative aspect-[2/3] rounded-2xl overflow-hidden ring-1 ring-white/10 hover:ring-fuchsia-500/40 transition duration-300 cursor-pointer">
+      {/* NEW badge */}
       {isNewlyAdded(data.createdAt) && (
-        <span className="absolute top-2 left-2 z-20 bg-red-600 text-[10px] font-bold uppercase px-2 py-0.5 rounded">
+        <span className="absolute top-3 right-3 z-20 bg-gradient-to-r from-fuchsia-500 to-pink-500 text-white text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-md shadow-lg shadow-fuchsia-500/30">
           New
         </span>
       )}
+
+      {/* Poster */}
       <img
-        className="cursor-pointer object-cover transition duration shadow-xl rounded-md group-hover:opacity-90 sm:group-hover:opacity-0 delay-300 w-full h-24 md:h-[12vw]"
+        className="w-full h-full object-cover transition duration-500 group-hover:scale-105"
         src={data.thumbnailUrl}
-        alt="Thumbnail"
+        alt={data.title || "Thumbnail"}
       />
-      <div className="opacity-0 absolute top-0 transition duration-200 z-10 invisible sm:visible w-full scale-0 group-hover:scale-110 group-hover:-translate-y-[6vw] group-hover:translate-x-[2vw] group-hover:opacity-100">
-        <img
-          className="cursor-pointer object-cover transition duration shadow-xl rounded-t-md w-full h-24 md:h-[12vw]"
-          src={data.thumbnailUrl}
-          alt="Thumbnail"
-        />
-        <div className="z-10 bg-zinc-800 p-2 lg:p-4 absolute w-full transition shadow-md rounded-b-md">
-          <div className="flex flex-row items-center gap-3">
-            <div className="cursor-pointer w-6 h-6 lg:w-10 lg:h-10 bg-white rounded-full flex justify-center items-center transition hover:bg-neutral-300">
-              <BsFillPlayFill
-                size={30}
-                onClick={() => {
-                  router.push(`/watch/${data?.id}`);
-                }}
-              />
-            </div>
-            <FavouriteBtn movieId={data?.id} profileId={profile?.id} />
-            <div
-              onClick={() => openModel(data?.id)}
-              className="cursor-pointer ml-auto group/item w-6 h-6 lg:w-10 lg:h-10 border-white border-2 rounded-full flex justify-center items-center transition hover:border-neutral-300"
-            >
-              <BiChevronDown
-                className="text-white group-hover/item-neutral-300"
-                size={30}
-              />
-            </div>
-          </div>
-          <p
-            className="text-green-400 font-semibold mt-4
-          "
+
+      {/* Hover overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
+        <p className="text-white text-sm font-bold line-clamp-1">{data.title}</p>
+        {data.genre && (
+          <p className="text-neutral-400 text-xs mt-0.5 line-clamp-1">{data.genre}</p>
+        )}
+
+        <div
+          className="flex items-center gap-2 mt-3"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => router.push(`/watch/${data?.id}`)}
+            className="w-9 h-9 bg-gradient-to-r from-fuchsia-500 to-purple-600 rounded-full flex justify-center items-center shadow-lg shadow-fuchsia-500/30 hover:opacity-90 transition"
           >
-            New <span>2023</span>
-          </p>
+            <BsFillPlayFill size={22} className="text-white ml-0.5" />
+          </button>
 
-          <div className="flex flex-row mt-4 gap-2 items-center">
-            <p className="text-white text-[10px] lg:text-sm">{data.duration}</p>
-          </div>
+          <FavouriteBtn movieId={data?.id} profileId={profile?.id} />
 
-          <div className="flex flex-row mt-4 gap-2 items-center">
-            <p className="text-white text-[10px] lg:text-sm">{data.genre}</p>
-          </div>
+          <button
+            onClick={() => openModel(data?.id)}
+            className="ml-auto w-9 h-9 border-2 border-white/60 rounded-full flex justify-center items-center hover:border-white transition"
+          >
+            <BiChevronDown className="text-white" size={22} />
+          </button>
         </div>
       </div>
     </div>

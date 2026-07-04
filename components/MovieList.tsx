@@ -15,37 +15,19 @@ const MovieList: React.FC<MovieListProps> = ({ data, title }) => {
   const router = useRouter();
 
   return (
-    <div className="px-4 md:px-12 mt-8">
-      <h2 className="text-white text-lg md:text-2xl font-semibold mb-4">
+    <div className="px-6 md:px-16 mt-8">
+      <h2 className="text-white text-2xl md:text-3xl font-bold mb-5">
         {title}
       </h2>
 
-      {/* 📱 Mobile: Horizontal Scroll | 🖥 Desktop: Grid */}
-      <div
-        className="
-          flex 
-          gap-3 
-          overflow-x-auto 
-          scrollbar-hide
-          md:grid 
-          md:grid-cols-4 
-          lg:grid-cols-5
-          md:gap-4 
-          md:overflow-visible
-        ">
+      {/* Horizontal poster row */}
+      <div className="flex gap-5 overflow-x-auto scrollbar-hide pb-2">
         {data.map((movie) => (
           <div
             key={movie.id}
             onClick={() => router.push(`/watch/${movie.id}`)}
-            className="
-              min-w-[160px]
-              sm:min-w-[180px]
-              md:min-w-0
-              md:w-full
-              transition-transform
-              duration-300
-              hover:scale-105
-            ">
+            className="flex-shrink-0 w-[150px] sm:w-[170px] md:w-[190px]"
+          >
             <MovieCard data={movie} />
           </div>
         ))}
