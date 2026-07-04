@@ -18,24 +18,19 @@ import { authOptions } from "./api/auth/[...nextauth]";
 import { useRouter } from "next/router";
 import SkelletonWrapper from "@/components/SkelletonWrapper";
 import useRegions from "@/hooks/useRegions";
+import LandingPage from "@/components/LandingPage";
 
 export async function getServerSideProps(context: any) {
   const session = await getServerSession(context.req, context.res, authOptions);
-  if (!session) {
-    return {
-      redirect: {
-        destination: "/auth",
-        permanent: false,
-      },
-    };
-  }
 
   return {
-    props: {},
+    props: {
+      isAuthenticated: !!session,
+    },
   };
 }
 
-export default function Home() {
+function HomeDashboard() {
   const { data: movies = [], isLoading } = useMovieList();
   const { data: seriesList = [], isLoading: isSeriesLoading } = useSeriesList();
   const { profile } = useSelectionStore();
@@ -56,7 +51,7 @@ export default function Home() {
       <InfoModel
         visible={isOpen}
         onClose={() => {
-          closeModel;
+          closeModel();
         }}
       />
       <Navbar />
@@ -105,4 +100,12 @@ export default function Home() {
       </div>
     </>
   );
+}
+
+export default function Home({ isAuthenticated }: { isAuthenticated: boolean }) {
+  if (!isAuthenticated) {
+    return <LandingPage />;
+  }
+
+  return <HomeDashboard />;
 }

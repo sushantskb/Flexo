@@ -11,6 +11,11 @@
   --tertiary-rgb: 0, 114, 215;
   --neutral: #050505;
   --neutral-rgb: 5, 5, 5;
+
+  /* Warm design system colors */
+  --warm-bg: #151313;
+  --warm-text: #EED3C4;
+  --warm-muted: #A8958B;
 }
 
 body {
@@ -24,7 +29,72 @@ body {
 
 html {
   @apply h-full;
+  scroll-behavior: smooth;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATION KEYFRAMES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(32px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmerGlow {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1; }
+}
+
+/* ── Reusable animation classes ── */
+.anim-fade-up   { animation: fadeUp 0.65s cubic-bezier(0.16,1,0.3,1) both; }
+.anim-fade-in   { animation: fadeIn 0.5s ease both; }
+.anim-slide-left  { animation: slideInLeft 0.65s cubic-bezier(0.16,1,0.3,1) both; }
+.anim-slide-right { animation: slideInRight 0.65s cubic-bezier(0.16,1,0.3,1) both; }
+.anim-scale-in  { animation: scaleIn 0.6s cubic-bezier(0.16,1,0.3,1) both; }
+.anim-shimmer   { animation: shimmerGlow 2.5s ease-in-out infinite; }
+
+/* Stagger delay helpers */
+.anim-delay-100 { animation-delay: 100ms; }
+.anim-delay-200 { animation-delay: 200ms; }
+.anim-delay-300 { animation-delay: 300ms; }
+.anim-delay-400 { animation-delay: 400ms; }
+.anim-delay-500 { animation-delay: 500ms; }
+.anim-delay-600 { animation-delay: 600ms; }
+.anim-delay-700 { animation-delay: 700ms; }
+
+/* Hidden state — JS toggle for scroll-triggered animations */
+.anim-hidden {
+  opacity: 0;
+  transform: translateY(28px);
+}
+.anim-visible {
+  transition: opacity 0.65s cubic-bezier(0.16,1,0.3,1),
+              transform 0.65s cubic-bezier(0.16,1,0.3,1);
+  opacity: 1;
+  transform: translateY(0);
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════════════
    PLYR LAYOUT — Theme Overrides
