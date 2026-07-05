@@ -45,6 +45,7 @@ export default function MyListPage() {
           <SkelletonWrapper title="Loading My List" />
         ) : favMovies.length === 0 ? (
           <NoData
+            variant="favourite"
             title="Your list is empty"
             description="Explore movies and add them to your list to see them here!"
             onAction={() => router.push("/")}

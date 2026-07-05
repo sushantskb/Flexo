@@ -56,7 +56,7 @@ const Billboard = () => {
 
   if (!data && !isLoading) {
     return (
-      <NoData title="No movies found" description="Our Team is working on it" />
+      <NoData variant="movie" title="No movies found" description="Our Team is working on it" />
     );
   }
   if (isLoading) {

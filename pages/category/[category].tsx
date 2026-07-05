@@ -15,6 +15,7 @@ const CategoryPage = () => {
       <>
         <Navbar />
         <NoData
+          variant="movie"
           title="No movies found"
           description="Please check back later."
           onAction={() => router.push("/")}

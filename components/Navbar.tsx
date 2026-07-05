@@ -12,9 +12,7 @@ const NAV_ITEMS = [
   { label: "Home", href: "/" },
   { label: "Movies", href: "/movies" },
   { label: "TV Shows", href: "/series" },
-  { label: "Originals", href: "/my-list" },
-  { label: "Anime", href: "/category/anime" },
-  { label: "Live", href: "/search" },
+  { label: "Anime", href: "/anime" },
 ];
 
 const Navbar = () => {

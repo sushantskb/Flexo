@@ -46,11 +46,13 @@ export default function SearchPage() {
           <SkelletonWrapper title="Searching..." />
         ) : !searchQuery ? (
           <NoData
+            variant="search"
             title="Search for movies or series"
             description="Type name, genre, or region in the search bar above."
           />
         ) : results.length === 0 ? (
           <NoData
+            variant="search"
             title="No matches found"
             description={`We couldn't find any movies or series matching "${searchQuery}".`}
             onAction={() => router.push("/")}

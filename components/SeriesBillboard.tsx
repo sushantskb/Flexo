@@ -19,6 +19,7 @@ const SeriesBillboard = () => {
   if (!data && !isLoading) {
     return (
       <NoData
+        variant="series"
         title="No series found"
         description="Our team is working on bringing series content soon."
       />

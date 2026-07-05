@@ -5,6 +5,8 @@ import Navbar from "@/components/Navbar";
 import Billboard from "@/components/Billboard";
 import InfoModel from "@/components/InfoModel";
 import MoviePosterCard from "@/components/MoviePosterCard";
+import CategoryTabs from "@/components/CategoryTabs";
+import PosterGridSkeleton from "@/components/PosterGridSkeleton";
 import Footer from "@/components/Footer";
 import NoData from "@/components/NoData";
 import useMovieList from "@/hooks/useMovieList";
@@ -51,18 +53,6 @@ const CATEGORIES = [
   "History",
 ];
 
-const PosterGridSkeleton = () => (
-  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-x-5 gap-y-8">
-    {Array.from({ length: 12 }).map((_, i) => (
-      <div key={i} className="animate-pulse">
-        <div className="aspect-[2/3] rounded-2xl bg-neutral-800 ring-1 ring-white/5" />
-        <div className="h-4 w-3/4 mt-3 rounded bg-neutral-800" />
-        <div className="h-3 w-1/2 mt-2 rounded bg-neutral-800/70" />
-      </div>
-    ))}
-  </div>
-);
-
 export default function MoviesPage() {
   const [activeCategory, setActiveCategory] = useState("All Movies");
   const isAll = activeCategory === "All Movies";
@@ -85,51 +75,32 @@ export default function MoviesPage() {
 
       <div className="px-6 md:px-16 pt-10 pb-20">
         {/* Section heading */}
-        <div className="flex items-end justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-white text-3xl md:text-4xl font-extrabold tracking-tight">
-              {isAll ? "Browse Movies" : `${activeCategory} Movies`}
-            </h1>
-            <p className="text-neutral-400 text-sm mt-1.5">
-              {isLoading
-                ? "Loading titles…"
-                : `${movies.length} title${movies.length === 1 ? "" : "s"} ${
-                    isAll ? "available" : "found"
-                  }`}
-            </p>
-          </div>
+        <div className="mb-6">
+          <h1 className="text-white text-3xl md:text-4xl font-extrabold tracking-tight">
+            {isAll ? "Browse Movies" : `${activeCategory} Movies`}
+          </h1>
+          <p className="text-neutral-400 text-sm mt-1.5">
+            {isLoading
+              ? "Loading titles…"
+              : `${movies.length} title${movies.length === 1 ? "" : "s"} ${
+                  isAll ? "available" : "found"
+                }`}
+          </p>
         </div>
 
-        {/* Category tabs — horizontal scroller with edge fades */}
-        <div className="relative mb-10">
-          <div className="pointer-events-none absolute left-0 top-0 bottom-2 w-10 bg-gradient-to-r from-black to-transparent z-10" />
-          <div className="pointer-events-none absolute right-0 top-0 bottom-2 w-10 bg-gradient-to-l from-black to-transparent z-10" />
-
-          <div className="flex items-center gap-2.5 overflow-x-auto scrollbar-hide pb-2 px-1">
-            {CATEGORIES.map((category) => {
-              const active = category === activeCategory;
-              return (
-                <button
-                  key={category}
-                  onClick={() => setActiveCategory(category)}
-                  className={`shrink-0 px-5 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-300 ${
-                    active
-                      ? "bg-gradient-to-r from-fuchsia-500 to-pink-500 text-white shadow-lg shadow-fuchsia-500/30 scale-105"
-                      : "bg-white/[0.04] text-neutral-300 ring-1 ring-white/10 hover:bg-white/10 hover:text-white hover:ring-white/20"
-                  }`}
-                >
-                  {category}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {/* Category tabs */}
+        <CategoryTabs
+          categories={CATEGORIES}
+          active={activeCategory}
+          onChange={setActiveCategory}
+        />
 
         {/* Grid */}
         {isLoading ? (
           <PosterGridSkeleton />
         ) : movies.length === 0 ? (
           <NoData
+            variant="movie"
             title="No movies found"
             description={`We couldn't find any ${
               isAll ? "" : activeCategory + " "
