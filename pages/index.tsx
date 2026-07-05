@@ -19,6 +19,7 @@ import { useRouter } from "next/router";
 import SkelletonWrapper from "@/components/SkelletonWrapper";
 import useRegions from "@/hooks/useRegions";
 import LandingPage from "@/components/LandingPage";
+import Footer from "@/components/Footer";
 
 export async function getServerSideProps(context: any) {
   const session = await getServerSession(context.req, context.res, authOptions);
@@ -56,7 +57,7 @@ function HomeDashboard() {
       />
       <Navbar />
       <Billboard />
-      <div className="pb-40">
+      <div className="pb-20">
         {/* Continue Watching */}
         {!isContinueLoading && continueWatching && continueWatching.length > 0 && (
           <ContinueWatchingRow
@@ -98,6 +99,8 @@ function HomeDashboard() {
           </React.Fragment>
         ))}
       </div>
+
+      <Footer />
     </>
   );
 }
