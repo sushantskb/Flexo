@@ -1,10 +1,10 @@
 "use client";
-import React, { useEffect } from "react";
+
+import React, { useEffect, useRef, useState } from "react";
 import Billboard from "@/components/Billboard";
 import InfoModel from "@/components/InfoModel";
 import MovieList from "@/components/MovieList";
 import Navbar from "@/components/Navbar";
-import useCurrentUser from "@/hooks/useCurrentUser";
 import useFavourites from "@/hooks/useFavourites";
 import useModelInfo from "@/hooks/useModelInfo";
 import useMovieList from "@/hooks/useMovieList";
@@ -15,9 +15,10 @@ import useWatchProgress from "@/hooks/useWatchProgress";
 import { useSelectionStore } from "@/zustand/useSelectStore";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "./api/auth/[...nextauth]";
-import { useRouter } from "next/router";
 import SkelletonWrapper from "@/components/SkelletonWrapper";
 import useRegions from "@/hooks/useRegions";
+import { useRouter } from "next/router";
+import { visitedPaths } from "@/hooks/useInView";
 import LandingPage from "@/components/LandingPage";
 import Footer from "@/components/Footer";
 
@@ -32,10 +33,14 @@ export async function getServerSideProps(context: any) {
 }
 
 function HomeDashboard() {
+  const router = useRouter();
+  const hasVisited = visitedPaths.has(router.pathname);
   const { data: movies = [], isLoading } = useMovieList();
   const { data: seriesList = [], isLoading: isSeriesLoading } = useSeriesList();
   const { profile } = useSelectionStore();
   const { data: regions = [], isLoading: isRegionsLoading } = useRegions();
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const [sectionInView, setSectionInView] = useState(hasVisited);
 
   const { data: favMovies, isLoading: isFavLoading } = useFavourites({
     profileId: profile?.id,
@@ -47,6 +52,45 @@ function HomeDashboard() {
 
   const { isOpen, closeModel } = useModelInfo();
 
+  useEffect(() => {
+    if (!hasVisited) {
+      setSectionInView(true);
+    }
+  }, [hasVisited]);
+
+  /* ── Dynamic overlap ── */
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (ticking) return;
+      ticking = true;
+
+      requestAnimationFrame(() => {
+        const scrollY = window.scrollY;
+        const billboard = section.previousElementSibling as HTMLElement;
+        const billboardHeight = billboard?.offsetHeight || window.innerHeight * 0.7;
+        const progress = Math.min(Math.max(scrollY / billboardHeight, 0), 1);
+
+        if (progress > 0.5) {
+          const overlapProgress = (progress - 0.5) / 0.5;
+          section.style.marginTop = `${overlapProgress * -10}rem`;
+        } else {
+          section.style.marginTop = "0rem";
+        }
+
+        ticking = false;
+      });
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
     <>
       <InfoModel
@@ -57,7 +101,11 @@ function HomeDashboard() {
       />
       <Navbar />
       <Billboard />
-      <div className="pb-20">
+
+      <div
+        ref={sectionRef}
+        className={`pb-20 relative z-10 ${hasVisited ? "row-shown" : sectionInView ? "row-enter-active" : "row-enter"}`}
+      >
         {/* Continue Watching */}
         {!isContinueLoading && continueWatching && continueWatching.length > 0 && (
           <ContinueWatchingRow

@@ -21,7 +21,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ data }) => {
   const { profile } = useSelectionStore();
 
   return (
-    <div className="group relative aspect-[2/3] rounded-2xl overflow-hidden ring-1 ring-white/10 hover:ring-fuchsia-500/40 transition duration-300 cursor-pointer">
+    <div className="card-row group relative aspect-[2/3] rounded-2xl overflow-hidden ring-1 ring-white/10 hover:ring-fuchsia-500/50 cursor-pointer">
       {/* NEW badge */}
       {isNewlyAdded(data.createdAt) && (
         <span className="absolute top-3 right-3 z-20 bg-gradient-to-r from-fuchsia-500 to-pink-500 text-white text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-md shadow-lg shadow-fuchsia-500/30">
@@ -31,25 +31,22 @@ const MovieCard: React.FC<MovieCardProps> = ({ data }) => {
 
       {/* Poster */}
       <img
-        className="w-full h-full object-cover transition duration-500 group-hover:scale-105"
+        className="w-full h-full object-cover"
         src={data.thumbnailUrl}
         alt={data.title || "Thumbnail"}
       />
 
       {/* Hover overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
+      <div className="card-overlay z-10">
         <p className="text-white text-sm font-bold line-clamp-1">{data.title}</p>
         {data.genre && (
           <p className="text-neutral-400 text-xs mt-0.5 line-clamp-1">{data.genre}</p>
         )}
 
-        <div
-          className="flex items-center gap-2 mt-3"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="card-actions">
           <button
             onClick={() => router.push(`/watch/${data?.id}`)}
-            className="w-9 h-9 bg-gradient-to-r from-fuchsia-500 to-purple-600 rounded-full flex justify-center items-center shadow-lg shadow-fuchsia-500/30 hover:opacity-90 transition"
+            className="w-9 h-9 bg-gradient-to-r from-fuchsia-500 to-purple-600 rounded-full flex justify-center items-center shadow-lg shadow-fuchsia-500/40 hover:scale-110 transition-transform"
           >
             <BsFillPlayFill size={22} className="text-white ml-0.5" />
           </button>
@@ -58,7 +55,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ data }) => {
 
           <button
             onClick={() => openModel(data?.id)}
-            className="ml-auto w-9 h-9 border-2 border-white/60 rounded-full flex justify-center items-center hover:border-white transition"
+            className="ml-auto w-9 h-9 border-2 border-white/60 rounded-full flex justify-center items-center hover:border-white hover:scale-110 transition-all"
           >
             <BiChevronDown className="text-white" size={22} />
           </button>

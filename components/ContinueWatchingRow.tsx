@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import { BsFillPlayFill, BsXCircleFill } from "react-icons/bs";
 import { MdHistory } from "react-icons/md";
 import axios from "axios";
+import { useInView } from "@/hooks/useInView";
 
 interface WatchProgressItem {
   id: string;
@@ -22,7 +23,7 @@ interface WatchProgressItem {
 
 interface ContinueWatchingRowProps {
   data: WatchProgressItem[];
-  onRemove: () => void; // callback to refetch after removal
+  onRemove: () => void;
 }
 
 const formatRemaining = (seconds: number) => {
@@ -38,6 +39,7 @@ const formatRemaining = (seconds: number) => {
 
 const ContinueWatchingRow: React.FC<ContinueWatchingRowProps> = ({ data, onRemove }) => {
   const router = useRouter();
+  const [ref, isInView, hasVisited] = useInView({ threshold: 0.1, rootMargin: "0px 0px -40px 0px" });
 
   if (!data || data.length === 0) return null;
 
@@ -64,14 +66,17 @@ const ContinueWatchingRow: React.FC<ContinueWatchingRowProps> = ({ data, onRemov
   };
 
   return (
-    <div className="px-6 md:px-16 mt-10">
+    <div
+      ref={ref}
+      className={`px-6 md:px-16 mt-10 ${hasVisited ? "row-shown" : isInView ? "row-enter-active" : "row-enter"}`}
+    >
       {/* Section Header */}
-      <h2 className="text-white text-2xl md:text-3xl font-bold mb-5">
+      <h2 className="section-title text-white text-2xl md:text-3xl font-bold mb-5">
         Continue Watching
       </h2>
 
       {/* Horizontal Scroll Row */}
-      <div className="flex gap-5 overflow-x-auto scrollbar-hide pb-2">
+      <div className="flex gap-5 overflow-x-auto scrollbar-hide smooth-scroll pb-2">
         {data.map((item) => {
           const remaining = timeRemaining(item);
           const meta = [item.episodeLabel, remaining].filter(Boolean).join(" • ");
@@ -82,12 +87,12 @@ const ContinueWatchingRow: React.FC<ContinueWatchingRowProps> = ({ data, onRemov
               className="group flex-shrink-0 w-[260px] sm:w-[300px] md:w-[340px] cursor-pointer"
             >
               {/* Thumbnail */}
-              <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-neutral-900 ring-1 ring-white/10 group-hover:ring-fuchsia-500/40 transition duration-300">
+              <div className="card-row relative w-full aspect-video rounded-2xl overflow-hidden bg-neutral-900 ring-1 ring-white/10 hover:ring-fuchsia-500/50">
                 {item.thumbnailUrl ? (
                   <img
                     src={item.thumbnailUrl}
                     alt={item.title || ""}
-                    className="w-full h-full object-cover transition duration-500 group-hover:scale-105"
+                    className="w-full h-full object-cover"
                   />
                 ) : (
                   <div className="w-full h-full bg-neutral-800 flex items-center justify-center">
@@ -96,13 +101,13 @@ const ContinueWatchingRow: React.FC<ContinueWatchingRowProps> = ({ data, onRemov
                 )}
 
                 {/* Play overlay on hover */}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <div className="card-overlay">
                   <div className="w-14 h-14 bg-gradient-to-r from-fuchsia-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg shadow-fuchsia-500/40">
                     <BsFillPlayFill size={26} className="text-white ml-0.5" />
                   </div>
                 </div>
 
-                {/* Remove (×) button */}
+                {/* Remove button */}
                 <button
                   onClick={(e) => handleRemove(e, item)}
                   className="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 text-white/90 hover:text-red-400"
@@ -112,7 +117,7 @@ const ContinueWatchingRow: React.FC<ContinueWatchingRowProps> = ({ data, onRemov
                 </button>
 
                 {/* Progress bar */}
-                <div className="absolute bottom-0 left-0 w-full h-[5px] bg-black/40">
+                <div className="absolute bottom-0 left-0 w-full h-[5px] bg-black/40 z-10">
                   <div
                     className="h-full bg-gradient-to-r from-fuchsia-500 to-purple-500 shadow-[0_0_10px_rgba(217,70,239,0.7)] transition-all"
                     style={{ width: `${Math.min(100, item.percentage)}%` }}

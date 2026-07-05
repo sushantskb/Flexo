@@ -73,6 +73,11 @@ const Billboard = () => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [isLoaded, setIsLoaded] = useState(false);
+  // Gate the entrance reveals until one frame AFTER the content has data and has
+  // painted. Starting the CSS animations at mount lets their timed delays elapse
+  // during the hard-load main-thread storm (hydration + video init) before the
+  // first paint, so `forwards` snaps to the end state and nothing animates.
+  const [entered, setEntered] = useState(false);
 
   const { profile } = useSelectionStore();
   const { data: currentUser, mutate: mutateUser } = useCurrentUser();
@@ -108,6 +113,69 @@ const Billboard = () => {
 
   /* ── Cursor parallax ── */
   const { display: scrambleTitle, isRevealed } = useScrambleDecipher(data?.title || "", { delay: 400, duration: 1400 });
+
+  /* ── Start entrance reveals one frame after content is ready ── */
+  useEffect(() => {
+    if (!data) return;
+    const raf = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(raf);
+  }, [data]);
+
+  const reveal = (delay: number): React.CSSProperties | undefined =>
+    entered
+      ? { animation: `revealUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s forwards`, willChange: "opacity, transform" }
+      : undefined;
+
+  /* ── Scroll parallax — whole billboard shrinks ── */
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (ticking) return;
+      ticking = true;
+
+      requestAnimationFrame(() => {
+        const scrollY = window.scrollY;
+        const billboardHeight = el.offsetHeight;
+
+        if (scrollY <= 0) {
+          el.style.transform = "";
+          el.style.opacity = "";
+          if (contentRef.current) {
+            contentRef.current.style.transform = "";
+            contentRef.current.style.opacity = "";
+          }
+          ticking = false;
+          return;
+        }
+
+        const progress = Math.min(scrollY / billboardHeight, 1);
+        const scale = 1 - progress * 0.4;
+        const translateX = progress * -5;
+        const opacity = 1 - progress * 0.7;
+
+        el.style.transform = `translate3d(${translateX}vw, 0, 0) scale(${scale})`;
+        el.style.transformOrigin = "center top";
+        el.style.opacity = String(opacity);
+
+        if (contentRef.current) {
+          const contentShift = progress * 80;
+          contentRef.current.style.transform = `translate3d(0, ${-contentShift}px, 0)`;
+          contentRef.current.style.opacity = String(1 - progress * 1);
+        }
+
+        ticking = false;
+      });
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -145,10 +213,10 @@ const Billboard = () => {
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-[85vh] md:h-[92vh] overflow-hidden scanlines"
+      className="relative w-full h-[70vh] md:h-[56.25vw] overflow-hidden scanlines z-0"
     >
-      {/* ── Background layer (parallax: moves opposite to cursor) ── */}
-      <div className="absolute inset-0 parallax-layer parallax-bg">
+      {/* ── Background layer (parallax) ── */}
+      <div className="absolute inset-0 parallax-layer parallax-bg will-change-transform">
         {!isLoaded && (
           <img
             src={data?.thumbnailUrl || ""}
@@ -164,7 +232,9 @@ const Billboard = () => {
             muted
             loop
             playsInline
-            className="w-full h-full"
+            crossOrigin
+            poster={data?.thumbnailUrl}
+            className="w-full h-full object-cover"
             onCanPlay={() => setIsLoaded(true)}
           >
             <MediaProvider
@@ -176,7 +246,7 @@ const Billboard = () => {
         )}
       </div>
 
-      {/* ── Liquid glass blur veil (replaces gradient overlays) ── */}
+      {/* ── Liquid glass blur veil ── */}
       <div
         className="absolute inset-0 pointer-events-none z-[2]"
         style={{
@@ -187,19 +257,19 @@ const Billboard = () => {
         <div className="absolute inset-0 backdrop-blur-xl bg-black/40" />
       </div>
 
-      {/* ── Secondary gradient veil for depth ── */}
+      {/* ── Secondary gradient veil ── */}
       <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-transparent to-transparent z-[3]" />
 
-      {/* ── Aurora blobs (parallax: mid layer) ── */}
+      {/* ── Aurora blobs ── */}
       <div className="absolute inset-0 z-[3] overflow-hidden pointer-events-none parallax-layer parallax-mid">
         <div className="aurora-blob-1 absolute -bottom-[20%] -left-[10%]" />
         <div className="aurora-blob-2 absolute -top-[10%] -right-[15%]" />
       </div>
 
-      {/* ── Content (parallax: foreground, moves with cursor) ── */}
-      <div className="absolute bottom-[8%] md:bottom-[14%] left-4 md:left-16 right-4 md:right-auto max-w-2xl z-[10] parallax-layer parallax-fg">
+      {/* ── Content (scroll parallax + cursor parallax) ── */}
+      <div ref={contentRef} className="absolute bottom-8 md:bottom-[25%] left-4 md:left-16 right-4 md:right-auto max-w-2xl z-[10] parallax-layer parallax-fg will-change-transform">
         {/* Badge + rating */}
-        <div className="flex items-center gap-4 mb-5 opacity-0" style={{ animation: "glassReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards" }}>
+        <div className="flex items-center gap-4 mb-5 opacity-0" style={reveal(0.5)}>
           <span className="liquid-glass relative bg-gradient-to-r from-fuchsia-500/80 to-purple-600/80 text-white text-[11px] md:text-xs font-bold tracking-wider px-4 py-1.5 rounded-full uppercase shadow-lg shadow-fuchsia-500/20">
             Flixo Original
           </span>
@@ -236,12 +306,12 @@ const Billboard = () => {
         </h1>
 
         {/* Description */}
-        <p className="hidden sm:block text-neutral-300 text-sm md:text-lg mt-5 max-w-xl leading-relaxed line-clamp-3 opacity-0" style={{ animation: "glassReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.2s forwards" }}>
+        <p className="hidden sm:block text-neutral-300 text-sm md:text-lg mt-5 max-w-xl leading-relaxed line-clamp-3 opacity-0" style={reveal(1.2)}>
           {data?.description}
         </p>
 
         {/* Meta row */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-6 text-neutral-300 text-sm md:text-base font-medium opacity-0" style={{ animation: "glassReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.4s forwards" }}>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-6 text-neutral-300 text-sm md:text-base font-medium opacity-0" style={reveal(1.4)}>
           {genres.map((g, i) => (
             <React.Fragment key={g}>
               {i > 0 && <span className="text-neutral-600">•</span>}
@@ -266,7 +336,7 @@ const Billboard = () => {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-4 mt-9 opacity-0" style={{ animation: "glassReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.6s forwards" }}>
+        <div className="flex items-center gap-4 mt-9 opacity-0" style={reveal(1.6)}>
           <button
             onClick={() => router.push(`/watch/${data?.id}`)}
             className="btn-rotate-border relative flex items-center gap-2 bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white px-7 md:px-9 py-3.5 rounded-2xl text-base md:text-lg font-bold transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-fuchsia-500/30 hover:shadow-fuchsia-500/50 hover:shadow-2xl"

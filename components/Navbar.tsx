@@ -73,7 +73,7 @@ const Navbar = () => {
         <div className="flex items-center gap-10">
           <Link href="/">
             <img
-              src="/logo.png"
+              src="/logo_transparent.png"
               alt="Flixo"
               className="h-12 md:h-14 w-auto object-contain cursor-pointer"
             />

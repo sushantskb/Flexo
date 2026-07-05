@@ -66,10 +66,76 @@ const SeriesBillboard = () => {
   const router = useRouter();
   const { data, isLoading } = useSeriesBillboard();
   const [isLoaded, setIsLoaded] = useState(false);
+  // See Billboard.tsx — gate reveals until a frame after content is painted so
+  // their timed delays don't elapse during the hard-load main-thread storm.
+  const [entered, setEntered] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   /* ── Cursor parallax ── */
   const { display: scrambleTitle, isRevealed } = useScrambleDecipher(data?.title || "", { delay: 400, duration: 1400 });
+
+  /* ── Start entrance reveals one frame after content is ready ── */
+  useEffect(() => {
+    if (!data) return;
+    const raf = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(raf);
+  }, [data]);
+
+  const reveal = (delay: number): React.CSSProperties | undefined =>
+    entered
+      ? { animation: `revealUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s forwards`, willChange: "opacity, transform" }
+      : undefined;
+
+  /* ── Scroll parallax — whole billboard shrinks ── */
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (ticking) return;
+      ticking = true;
+
+      requestAnimationFrame(() => {
+        const scrollY = window.scrollY;
+        const billboardHeight = el.offsetHeight;
+
+        if (scrollY <= 0) {
+          el.style.transform = "";
+          el.style.opacity = "";
+          if (contentRef.current) {
+            contentRef.current.style.transform = "";
+            contentRef.current.style.opacity = "";
+          }
+          ticking = false;
+          return;
+        }
+
+        const progress = Math.min(scrollY / billboardHeight, 1);
+        const scale = 1 - progress * 0.4;
+        const translateX = progress * -5;
+        const opacity = 1 - progress * 0.7;
+
+        el.style.transform = `translate3d(${translateX}vw, 0, 0) scale(${scale})`;
+        el.style.transformOrigin = "center top";
+        el.style.opacity = String(opacity);
+
+        if (contentRef.current) {
+          const contentShift = progress * 80;
+          contentRef.current.style.transform = `translate3d(0, ${-contentShift}px, 0)`;
+          contentRef.current.style.opacity = String(1 - progress * 1);
+        }
+
+        ticking = false;
+      });
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -112,10 +178,10 @@ const SeriesBillboard = () => {
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-[70vh] md:h-[56.25vw] overflow-hidden scanlines"
+      className="relative w-full h-[70vh] md:h-[56.25vw] overflow-hidden scanlines z-0"
     >
       {/* ── Background layer (parallax) ── */}
-      <div className="absolute inset-0 parallax-layer parallax-bg">
+      <div className="absolute inset-0 parallax-layer parallax-bg will-change-transform">
         {!isLoaded && (
           <img
             src={data?.thumbnailUrl || ""}
@@ -131,7 +197,9 @@ const SeriesBillboard = () => {
             muted
             loop
             playsInline
-            className="w-full h-full"
+            crossOrigin
+            poster={data?.thumbnailUrl}
+            className="w-full h-full object-cover"
             onCanPlay={() => setIsLoaded(true)}
           >
             <MediaProvider
@@ -163,9 +231,9 @@ const SeriesBillboard = () => {
         <div className="aurora-blob-2 absolute -top-[15%] -right-[20%]" style={{ background: "radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, rgba(236, 72, 153, 0.08) 40%, transparent 70%)" }} />
       </div>
 
-      {/* ── Content ── */}
-      <div className="absolute bottom-8 md:bottom-[25%] left-4 md:left-16 right-4 md:right-auto max-w-xl z-[10] parallax-layer parallax-fg space-y-4">
-        <div className="flex items-center gap-2 opacity-0" style={{ animation: "glassReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards" }}>
+      {/* ── Content (scroll parallax + cursor parallax) ── */}
+      <div ref={contentRef} className="absolute bottom-8 md:bottom-[25%] left-4 md:left-16 right-4 md:right-auto max-w-xl z-[10] parallax-layer parallax-fg space-y-4 will-change-transform">
+        <div className="flex items-center gap-2 opacity-0" style={reveal(0.5)}>
           <span className="liquid-glass relative bg-zinc-800/60 text-white text-[10px] md:text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded border border-white/10">
             Series
           </span>
@@ -200,11 +268,11 @@ const SeriesBillboard = () => {
           </span>
         </h1>
 
-        <p className="hidden sm:block text-white text-sm md:text-lg drop-shadow-xl line-clamp-3 opacity-0" style={{ animation: "glassReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.1s forwards" }}>
+        <p className="hidden sm:block text-white text-sm md:text-lg drop-shadow-xl line-clamp-3 opacity-0" style={reveal(1.1)}>
           {data?.description}
         </p>
 
-        <div className="flex items-center gap-3 mt-2 opacity-0" style={{ animation: "glassReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.3s forwards" }}>
+        <div className="flex items-center gap-3 mt-2 opacity-0" style={reveal(1.3)}>
           {/* Play Button */}
           <button
             onClick={handleAction}
