@@ -1,7 +1,7 @@
 "use client";
 
 import useBillboard from "@/hooks/useBillbord";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BsFillPlayFill, BsBookmark, BsBookmarkFill } from "react-icons/bs";
 import { AiFillStar } from "react-icons/ai";
 import { useRouter } from "next/router";
@@ -16,9 +16,61 @@ import useCurrentUser from "@/hooks/useCurrentUser";
 import useFavourites from "@/hooks/useFavourites";
 import { useSelectionStore } from "@/zustand/useSelectStore";
 
+const GLYPH_POOL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*!?<>{}[]";
+
+function useScrambleDecipher(target: string, options?: { delay?: number; duration?: number; speed?: number }) {
+  const { delay = 800, duration = 1200, speed = 35 } = options ?? {};
+  const [display, setDisplay] = useState(() => target.split("").map(() => GLYPH_POOL[Math.floor(Math.random() * GLYPH_POOL.length)]));
+  const [isRevealed, setIsRevealed] = useState(false);
+  const frameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!target) return;
+    setDisplay(target.split("").map(() => GLYPH_POOL[Math.floor(Math.random() * GLYPH_POOL.length)]));
+
+    const timeout = setTimeout(() => {
+      const start = Date.now();
+      const totalChars = target.length;
+      const charsRevealed = new Set<number>();
+
+      const tick = () => {
+        const elapsed = Date.now() - start;
+        const progress = Math.min(elapsed / duration, 1);
+
+        setDisplay((prev) =>
+          prev.map((_, i) => {
+            const charThreshold = (i + 1) / totalChars;
+            if (progress >= charThreshold || charsRevealed.has(i)) {
+              charsRevealed.add(i);
+              return target[i];
+            }
+            return GLYPH_POOL[Math.floor(Math.random() * GLYPH_POOL.length)];
+          })
+        );
+
+        if (progress < 1) {
+          frameRef.current = requestAnimationFrame(tick);
+        } else {
+          setIsRevealed(true);
+        }
+      };
+
+      frameRef.current = requestAnimationFrame(tick);
+    }, delay);
+
+    return () => {
+      clearTimeout(timeout);
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    };
+  }, [target, delay, duration, speed]);
+
+  return { display, isRevealed };
+}
+
 const Billboard = () => {
   const { data, isLoading } = useBillboard();
   const router = useRouter();
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -54,6 +106,25 @@ const Billboard = () => {
     }
   }, [data?.id, isFavourite, profile?.id, currentUser?.email, mutateFavourite, mutateUser]);
 
+  /* ── Cursor parallax ── */
+  const { display: scrambleTitle, isRevealed } = useScrambleDecipher(data?.title || "", { delay: 400, duration: 1400 });
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const handleMove = (e: MouseEvent) => {
+      const rect = el.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = (e.clientY - rect.top) / rect.height;
+      el.style.setProperty("--cursor-x", String(x));
+      el.style.setProperty("--cursor-y", String(y));
+    };
+
+    el.addEventListener("mousemove", handleMove, { passive: true });
+    return () => el.removeEventListener("mousemove", handleMove);
+  }, []);
+
   if (!data && !isLoading) {
     return (
       <NoData variant="movie" title="No movies found" description="Our Team is working on it" />
@@ -63,7 +134,6 @@ const Billboard = () => {
     return <Loader />;
   }
 
-  // Derive meta from real API data
   const genres: string[] = (data?.genre || "")
     .split(/[,&/|]/)
     .map((g: string) => g.trim())
@@ -73,44 +143,64 @@ const Billboard = () => {
   const rating = data?.rating;
 
   return (
-    <div className="relative w-full h-[85vh] md:h-[92vh] overflow-hidden">
-      {/* Thumbnail (shown until video loads) */}
-      {!isLoaded && (
-        <img
-          src={data?.thumbnailUrl || ""}
-          alt={data?.title || "thumbnail"}
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-      )}
-
-      {/* Trailer */}
-      {data?.trailerUrl && (
-        <MediaPlayer
-          src={data.trailerUrl}
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="w-full h-full"
-          onCanPlay={() => setIsLoaded(true)}
-        >
-          <MediaProvider
-            className={`w-full h-full object-cover transition-opacity duration-700 ${
-              isLoaded ? "opacity-100" : "opacity-0"
-            }`}
+    <div
+      ref={containerRef}
+      className="relative w-full h-[85vh] md:h-[92vh] overflow-hidden scanlines"
+    >
+      {/* ── Background layer (parallax: moves opposite to cursor) ── */}
+      <div className="absolute inset-0 parallax-layer parallax-bg">
+        {!isLoaded && (
+          <img
+            src={data?.thumbnailUrl || ""}
+            alt={data?.title || "thumbnail"}
+            className="absolute inset-0 w-full h-full object-cover"
           />
-        </MediaPlayer>
-      )}
+        )}
 
-      {/* Cinematic gradient overlays */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/20" />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent" />
+        {data?.trailerUrl && (
+          <MediaPlayer
+            src={data.trailerUrl}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="w-full h-full"
+            onCanPlay={() => setIsLoaded(true)}
+          >
+            <MediaProvider
+              className={`w-full h-full object-cover transition-opacity duration-1000 ${
+                isLoaded ? "opacity-100" : "opacity-0"
+              }`}
+            />
+          </MediaPlayer>
+        )}
+      </div>
 
-      {/* Content */}
-      <div className="absolute bottom-[8%] md:bottom-[14%] left-4 md:left-16 right-4 md:right-auto max-w-2xl">
+      {/* ── Liquid glass blur veil (replaces gradient overlays) ── */}
+      <div
+        className="absolute inset-0 pointer-events-none z-[2]"
+        style={{
+          maskImage: "linear-gradient(to top, black 0%, black 30%, transparent 70%)",
+          WebkitMaskImage: "linear-gradient(to top, black 0%, black 30%, transparent 70%)",
+        }}
+      >
+        <div className="absolute inset-0 backdrop-blur-xl bg-black/40" />
+      </div>
+
+      {/* ── Secondary gradient veil for depth ── */}
+      <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-transparent to-transparent z-[3]" />
+
+      {/* ── Aurora blobs (parallax: mid layer) ── */}
+      <div className="absolute inset-0 z-[3] overflow-hidden pointer-events-none parallax-layer parallax-mid">
+        <div className="aurora-blob-1 absolute -bottom-[20%] -left-[10%]" />
+        <div className="aurora-blob-2 absolute -top-[10%] -right-[15%]" />
+      </div>
+
+      {/* ── Content (parallax: foreground, moves with cursor) ── */}
+      <div className="absolute bottom-[8%] md:bottom-[14%] left-4 md:left-16 right-4 md:right-auto max-w-2xl z-[10] parallax-layer parallax-fg">
         {/* Badge + rating */}
-        <div className="flex items-center gap-4 mb-5">
-          <span className="bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white text-[11px] md:text-xs font-bold tracking-wider px-4 py-1.5 rounded-full uppercase shadow-lg shadow-fuchsia-500/20">
+        <div className="flex items-center gap-4 mb-5 opacity-0" style={{ animation: "glassReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards" }}>
+          <span className="liquid-glass relative bg-gradient-to-r from-fuchsia-500/80 to-purple-600/80 text-white text-[11px] md:text-xs font-bold tracking-wider px-4 py-1.5 rounded-full uppercase shadow-lg shadow-fuchsia-500/20">
             Flixo Original
           </span>
           {rating && (
@@ -121,18 +211,37 @@ const Billboard = () => {
           )}
         </div>
 
-        {/* Title */}
-        <h1 className="text-white text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight drop-shadow-2xl uppercase leading-[0.95]">
-          {data?.title}
+        {/* Title — Scramble decipher */}
+        <h1 className="text-white text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight drop-shadow-2xl uppercase leading-[0.95] mb-0">
+          <span className="sr-only">{data?.title}</span>
+          <span aria-hidden="true" className="glitch-text" data-text={scrambleTitle.join("")}>
+            {scrambleTitle.map((char: string, i: number) => (
+              <span
+                key={i}
+                className={`inline-block whitespace-pre transition-colors duration-100 ${
+                  isRevealed ? "text-white" : "text-fuchsia-400/80"
+                }`}
+                style={{
+                  animationName: "glyphFlicker",
+                  animationDuration: "0.2s",
+                  animationTimingFunction: "steps(1)",
+                  animationIterationCount: "infinite",
+                  animationDelay: `${i * 30}ms`,
+                }}
+              >
+                {char}
+              </span>
+            ))}
+          </span>
         </h1>
 
         {/* Description */}
-        <p className="hidden sm:block text-neutral-300 text-sm md:text-lg mt-5 max-w-xl leading-relaxed line-clamp-3">
+        <p className="hidden sm:block text-neutral-300 text-sm md:text-lg mt-5 max-w-xl leading-relaxed line-clamp-3 opacity-0" style={{ animation: "glassReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.2s forwards" }}>
           {data?.description}
         </p>
 
         {/* Meta row */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-6 text-neutral-300 text-sm md:text-base font-medium">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-6 text-neutral-300 text-sm md:text-base font-medium opacity-0" style={{ animation: "glassReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.4s forwards" }}>
           {genres.map((g, i) => (
             <React.Fragment key={g}>
               {i > 0 && <span className="text-neutral-600">•</span>}
@@ -151,16 +260,16 @@ const Billboard = () => {
               <span>{year}</span>
             </>
           )}
-          <span className="ml-1 border border-neutral-500 rounded px-1.5 py-0.5 text-xs text-neutral-300">
+          <span className="ml-1 border border-white/15 rounded px-1.5 py-0.5 text-xs text-neutral-300 liquid-glass">
             18+
           </span>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-4 mt-9">
+        <div className="flex items-center gap-4 mt-9 opacity-0" style={{ animation: "glassReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.6s forwards" }}>
           <button
             onClick={() => router.push(`/watch/${data?.id}`)}
-            className="flex items-center gap-2 bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white px-7 md:px-9 py-3.5 rounded-2xl text-base md:text-lg font-bold hover:opacity-90 transition shadow-lg shadow-fuchsia-500/30"
+            className="btn-rotate-border relative flex items-center gap-2 bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white px-7 md:px-9 py-3.5 rounded-2xl text-base md:text-lg font-bold transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-fuchsia-500/30 hover:shadow-fuchsia-500/50 hover:shadow-2xl"
           >
             <BsFillPlayFill size={26} />
             Watch Now
@@ -168,7 +277,7 @@ const Billboard = () => {
 
           <button
             onClick={toggleFavourite}
-            className="flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 text-white px-7 md:px-9 py-3.5 rounded-2xl text-base md:text-lg font-bold hover:bg-white/20 transition"
+            className="liquid-glass relative flex items-center gap-2 bg-white/5 text-white px-7 md:px-9 py-3.5 rounded-2xl text-base md:text-lg font-bold transition-all duration-300 hover:scale-105 active:scale-95 hover:bg-white/10"
           >
             {isFavourite ? <BsBookmarkFill size={20} /> : <BsBookmark size={20} />}
             My List
