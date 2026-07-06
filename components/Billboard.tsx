@@ -70,7 +70,11 @@ function useScrambleDecipher(target: string, options?: { delay?: number; duratio
 const Billboard = () => {
   const { data, isLoading } = useBillboard();
   const router = useRouter();
-  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Kept for any external reads, but setup/teardown of listeners now lives
+  // entirely inside the callback ref below (see setContainerRef).
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const cleanupRef = useRef<(() => void) | null>(null);
 
   const [isLoaded, setIsLoaded] = useState(false);
   // Gate the entrance reveals until one frame AFTER the content has data and has
@@ -129,9 +133,31 @@ const Billboard = () => {
   /* ── Scroll parallax — whole billboard shrinks ── */
   const contentRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
+  /*
+   * IMPORTANT: this used to be a `useRef` + `useEffect(() => {...}, [])` pair.
+   * That pattern reads `containerRef.current` exactly once, on the component's
+   * very first commit. But this component conditionally renders `<Loader />`
+   * while `isLoading` is true — so on a cold load, `containerRef.current` is
+   * still `null` when the effect fires, the effect bails out via
+   * `if (!el) return;`, and because the deps array is empty it never runs
+   * again. Once data arrives and the real container mounts, nothing
+   * re-attaches the scroll/mousemove listeners, so the shrink/fade animation
+   * silently never activates for that page load.
+   *
+   * Fixing this with a callback ref instead: callback refs fire every time
+   * the DOM node is attached OR detached, including the transition from
+   * "<Loader/> with no node" to "real container with a node" — so setup runs
+   * at the right time regardless of how long data takes to load.
+   */
+  const setContainerRef = useCallback((node: HTMLDivElement | null) => {
+    // Tear down any previous listeners before attaching to a new node
+    if (cleanupRef.current) {
+      cleanupRef.current();
+      cleanupRef.current = null;
+    }
+
+    containerRef.current = node;
+    if (!node) return;
 
     let ticking = false;
 
@@ -141,11 +167,11 @@ const Billboard = () => {
 
       requestAnimationFrame(() => {
         const scrollY = window.scrollY;
-        const billboardHeight = el.offsetHeight;
+        const billboardHeight = node.offsetHeight;
 
         if (scrollY <= 0) {
-          el.style.transform = "";
-          el.style.opacity = "";
+          node.style.transform = "";
+          node.style.opacity = "";
           if (contentRef.current) {
             contentRef.current.style.transform = "";
             contentRef.current.style.opacity = "";
@@ -159,9 +185,9 @@ const Billboard = () => {
         const translateX = progress * -5;
         const opacity = 1 - progress * 0.7;
 
-        el.style.transform = `translate3d(${translateX}vw, 0, 0) scale(${scale})`;
-        el.style.transformOrigin = "center top";
-        el.style.opacity = String(opacity);
+        node.style.transform = `translate3d(${translateX}vw, 0, 0) scale(${scale})`;
+        node.style.transformOrigin = "center top";
+        node.style.opacity = String(opacity);
 
         if (contentRef.current) {
           const contentShift = progress * 80;
@@ -173,24 +199,35 @@ const Billboard = () => {
       });
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
     const handleMove = (e: MouseEvent) => {
-      const rect = el.getBoundingClientRect();
+      const rect = node.getBoundingClientRect();
       const x = (e.clientX - rect.left) / rect.width;
       const y = (e.clientY - rect.top) / rect.height;
-      el.style.setProperty("--cursor-x", String(x));
-      el.style.setProperty("--cursor-y", String(y));
+      node.style.setProperty("--cursor-x", String(x));
+      node.style.setProperty("--cursor-y", String(y));
     };
 
-    el.addEventListener("mousemove", handleMove, { passive: true });
-    return () => el.removeEventListener("mousemove", handleMove);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    node.addEventListener("mousemove", handleMove, { passive: true });
+
+    // Run once immediately — covers the case where the node mounts while
+    // the page is already mid-scroll (e.g. browser scroll restoration).
+    handleScroll();
+
+    cleanupRef.current = () => {
+      window.removeEventListener("scroll", handleScroll);
+      node.removeEventListener("mousemove", handleMove);
+    };
+  }, []);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (cleanupRef.current) {
+        cleanupRef.current();
+        cleanupRef.current = null;
+      }
+    };
   }, []);
 
   if (!data && !isLoading) {
@@ -212,7 +249,7 @@ const Billboard = () => {
 
   return (
     <div
-      ref={containerRef}
+      ref={setContainerRef}
       className="relative w-full h-[70vh] md:h-[56.25vw] overflow-hidden scanlines z-0"
     >
       {/* ── Background layer (parallax) ── */}
