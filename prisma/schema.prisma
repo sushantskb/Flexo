@@ -93,6 +93,26 @@ model Movie {
   region       Region?  @relation(fields: [regionId], references: [id])
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  // ── Optional rich metadata for the details page ──
+  // Older documents only carry the fields above; the API normalizes whatever is present.
+  posterUrl         String?
+  releaseYear       Int?
+  maturityRating    String?
+  imdbRating        Float?
+  rottenTomatoes    Int?
+  metacritic        Int?
+  director          String?
+  writers           String[]
+  cast              Json?    // [{ name, character?, imageUrl? }] or ["Name", ...]
+  studio            String?
+  budget            String?
+  awards            String?
+  awardsNote        String?
+  audioLanguages    String[]
+  subtitleLanguages String[]
+  videoQualities    String[] // e.g. ["Dolby Vision", "Atmos", "4K Ultra HD"]
+  extras            Json?    // [{ title, description?, videoUrl, thumbnailUrl?, duration? }]
 }
 
 

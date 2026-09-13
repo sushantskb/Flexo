@@ -1,11 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/router";
 import axios from "axios";
 import { useSelectionStore } from "@/zustand/useSelectStore";
 import useMovie from "@/hooks/useMovie";
-import useMovieList from "@/hooks/useMovieList";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import NoData from "@/components/NoData";
+import MovieHero, { ResumeInfo } from "@/components/MovieHero";
+import MovieDetailSections from "@/components/MovieDetailSections";
+import { MovieDetails, MovieExtra } from "@/lib/movieDetails";
 import { MediaPlayer, MediaProvider, MediaPlayerInstance, useMediaStore } from "@vidstack/react";
 
 // Modern custom SVGs for 30s Rewind/Forward
@@ -113,24 +118,24 @@ import "@vidstack/react/player/styles/plyr/theme.css";
 const Movie = () => {
   const router = useRouter();
   const { movieId } = router.query;
-  const { data } = useMovie(movieId as string);
-  const { data: allMovies = [] } = useMovieList();
+  const { data, error, mutate } = useMovie(movieId as string) as {
+    data?: MovieDetails;
+    error?: { response?: { status?: number } };
+    mutate: () => void;
+  };
   const { profile } = useSelectionStore();
 
   const playerRef = useRef<MediaPlayerInstance>(null);
   const hasSeekedRef = useRef(false);
   const nextTriggeredRef = useRef(false);
 
-  const [activeSource, setActiveSource] = useState<"movie" | "trailer" | null>(null);
-  const [resumeTime, setResumeTime] = useState(0);
+  const [activeSource, setActiveSource] = useState<"movie" | "trailer" | "clip" | null>(null);
+  const [activeClip, setActiveClip] = useState<MovieExtra | null>(null);
+  const [resume, setResume] = useState<ResumeInfo | null>(null);
   const [showUpNext, setShowUpNext] = useState(false);
 
-  // Pick a random different movie as suggestion
-  const suggestedMovie = useMemo(() => {
-    if (!allMovies.length || !movieId) return null;
-    const others = allMovies.filter((m: any) => m.id !== movieId);
-    return others.length ? others[Math.floor(Math.random() * others.length)] : null;
-  }, [allMovies, movieId]);
+  // Best "More Like This" match is the up-next suggestion
+  const suggestedMovie = data?.related?.[0] ?? null;
 
   // Reset state when source/movie changes
   useEffect(() => {
@@ -141,14 +146,17 @@ const Movie = () => {
 
   // Fetch saved progress
   useEffect(() => {
+    setResume(null);
     if (!movieId || typeof movieId !== "string") return;
     const profileId = profile?.id;
     const url = profileId ? `/api/watch-progress?profileId=${profileId}&all=true` : `/api/watch-progress?all=true`;
     fetch(url)
       .then((r) => r.json())
       .then((items: any[]) => {
-        const saved = items?.find((i) => i.movieId === movieId);
-        if (saved?.currentTime > 5 && saved?.percentage < 99.5) setResumeTime(saved.currentTime);
+        const saved = Array.isArray(items) ? items.find((i) => i.movieId === movieId) : null;
+        if (saved?.currentTime > 5 && saved?.percentage < 99.5) {
+          setResume({ currentTime: saved.currentTime, duration: saved.duration, percentage: saved.percentage });
+        }
       })
       .catch(() => {});
   }, [movieId, profile?.id]);
@@ -169,7 +177,7 @@ const Movie = () => {
         currentTime: ct,
         duration: dur,
       });
-      setResumeTime(ct);
+      setResume({ currentTime: ct, duration: dur, percentage: (ct / dur) * 100 });
     } catch {}
   }, [movieId, data, profile?.id]);
 
@@ -230,6 +238,7 @@ const Movie = () => {
   }, [activeSource, movieId, data, profile?.id]);
 
   // Seek to resume time on canplay
+  const resumeTime = resume?.currentTime ?? 0;
   const handleCanPlay = useCallback(() => {
     if (hasSeekedRef.current || activeSource !== "movie") return;
     if (resumeTime > 5 && playerRef.current) {
@@ -271,26 +280,69 @@ const Movie = () => {
     router.push(`/watch/${suggestedMovie.id}`);
   };
 
+  const playClip = (clip: MovieExtra) => {
+    setActiveClip(clip);
+    setActiveSource("clip");
+  };
+
+  if (error) {
+    const notFound = error.response?.status === 404;
+    return (
+      <div className="min-h-screen w-full bg-[#08080b] text-white">
+        <Navbar />
+        <div className="pt-32">
+          {notFound ? (
+            <NoData
+              variant="movie"
+              title="Movie not found"
+              description="This title may have been removed or the link is incorrect."
+              actionLabel="Browse Movies"
+              onAction={() => router.push("/movies")}
+            />
+          ) : (
+            <NoData
+              variant="movie"
+              title="Couldn't load this movie"
+              description="Something went wrong on our side. Please try again in a moment."
+              actionLabel="Try Again"
+              onAction={() => mutate()}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (!data) {
     return (
-      <div className="h-screen w-screen bg-[#141414] flex items-center justify-center">
+      <div className="h-screen w-screen bg-[#08080b] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-[#e50914] border-t-transparent rounded-full animate-spin" />
+          <div className="w-10 h-10 border-2 border-fuchsia-500 border-t-transparent rounded-full animate-spin" />
           <p className="text-zinc-500 text-sm font-medium tracking-wide">Loading...</p>
         </div>
       </div>
     );
   }
 
+  const playerSrc =
+    (router.query.videoUrl as string) ||
+    (activeSource === "movie"
+      ? data.videoUrl
+      : activeSource === "clip"
+      ? activeClip?.videoUrl
+      : data.trailerUrl) ||
+    "";
+  const playerTitle = activeSource === "clip" && activeClip ? `${data.title} — ${activeClip.title}` : data.title;
+
   return (
-    <div className="min-h-screen w-full bg-[#141414] text-white">
+    <div className="min-h-screen w-full bg-[#08080b] text-white">
       {/* ── PLAYER ─────────────────────────────────────────────────────────── */}
       {activeSource && (
         <div className="fixed inset-0 z-50 bg-black">
           <MediaPlayer
             ref={playerRef}
-            title={data.title}
-            src={(router.query.videoUrl as string) || (activeSource === "movie" ? data.videoUrl : data.trailerUrl)}
+            title={playerTitle}
+            src={playerSrc}
             autoplay
             className="w-full h-full"
             onCanPlay={handleCanPlay}
@@ -357,104 +409,26 @@ const Movie = () => {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
                   <path d="M19 12H5M12 19l-7-7 7-7" />
                 </svg>
-                <span>{data.title}</span>
+                <span>{playerTitle}</span>
               </button>
             </div>
           </MediaPlayer>
         </div>
       )}
 
-      {/* ── HERO INFO (when not playing) ────────────────────────────────── */}
+      {/* ── DETAILS (when not playing) ──────────────────────────────────── */}
       {!activeSource && (
-        <div className="relative min-h-screen flex items-center">
-          {/* Cinematic background */}
-          <div className="absolute inset-0">
-            <img
-              src={data.thumbnailUrl}
-              alt={data.title}
-              className="w-full h-full object-cover"
-              style={{ opacity: 0.5 }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/70 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-transparent to-[#141414]/30" />
-          </div>
-
-          {/* Top nav */}
-          <nav
-            className="fixed top-0 left-0 w-full z-50 px-8 py-5 flex items-center"
-            style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)" }}
-          >
-            <button
-              onClick={() => router.back()}
-              className="flex items-center gap-2.5 text-white/70 hover:text-white transition-colors group"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 group-hover:text-[#e50914] transition-colors">
-                <path d="M19 12H5M12 19l-7-7 7-7" />
-              </svg>
-              <span className="text-sm font-medium">Back</span>
-            </button>
-          </nav>
-
-          {/* Content */}
-          <div className="relative z-10 px-8 md:px-20 pt-24 pb-16 max-w-2xl">
-            {/* Genre badge */}
-            {data.genre && (
-              <span className="inline-block text-[10px] font-bold uppercase tracking-[0.25em] text-white/40 border border-white/15 px-3 py-1 rounded-full mb-6">
-                {data.genre}
-              </span>
-            )}
-
-            <h1 className="text-5xl md:text-7xl font-black leading-none tracking-tight mb-4 drop-shadow-2xl">
-              {data.title}
-            </h1>
-
-            {/* Meta */}
-            <div className="flex flex-wrap items-center gap-3 mb-5 text-sm">
-              <span className="text-green-400 font-bold">98% Match</span>
-              {data.duration && (
-                <span className="text-zinc-400">{data.duration}</span>
-              )}
-              <span className="border border-zinc-700/80 text-zinc-400 text-[10px] px-2 py-0.5 rounded-sm font-medium">
-                4K Ultra HD
-              </span>
-            </div>
-
-            {/* Resume badge */}
-            {resumeTime > 5 && (
-              <div className="flex items-center gap-2 mb-5 text-sm text-yellow-400 font-medium">
-                <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M8 5v14l11-7z" /></svg>
-                <span>Resume from {Math.floor(resumeTime / 60)}m {Math.floor(resumeTime % 60)}s</span>
-              </div>
-            )}
-
-            <p className="text-zinc-400 text-base leading-relaxed mb-8 max-w-lg line-clamp-4">
-              {data.description}
-            </p>
-
-            {/* Action buttons */}
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => setActiveSource("movie")}
-                className="flex items-center gap-3 bg-white hover:bg-[#e50914] text-black hover:text-white font-bold text-base px-8 py-3.5 rounded-md transition-all duration-150 active:scale-95 shadow-xl cursor-pointer"
-              >
-                <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M8 5v14l11-7z" /></svg>
-                {resumeTime > 5 ? "Resume" : "Play"}
-              </button>
-
-              {data.trailerUrl && (
-                <button
-                  onClick={() => setActiveSource("trailer")}
-                  className="flex items-center gap-3 bg-zinc-600/50 hover:bg-zinc-600/80 text-white font-bold text-base px-8 py-3.5 rounded-md transition-all duration-150 active:scale-95 border border-zinc-600/60 shadow-xl backdrop-blur-sm cursor-pointer"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
-                    <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-                  </svg>
-                  Trailer
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+        <>
+          <Navbar />
+          <MovieHero
+            movie={data}
+            resume={resume}
+            onPlay={() => setActiveSource("movie")}
+            onTrailer={data.trailerUrl ? () => setActiveSource("trailer") : undefined}
+          />
+          <MovieDetailSections movie={data} onPlayClip={playClip} />
+          <Footer />
+        </>
       )}
     </div>
   );
